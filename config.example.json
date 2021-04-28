@@ -1,0 +1,10 @@
+{
+  "configs": [{
+    "memory": 4500,
+    "thread": 3,
+    "tmp": "/Volumes/SSD/tmp",
+    "output": "/Volumes/HDD/final",
+    "concurrent": 4,
+    "totalPlots": 30
+  }]
+}
