@@ -27,7 +27,7 @@ function startMine(config) {
   ])
   const pid = child.pid
   const t = new Date()
-  const fileLogName = `./output/${pid}-${t.getFullYear()}-${t.getMonth()}-${t.getDate()}-${t.getHours()}:${t.getMinutes()}:${t.getSeconds()}:${t.getMilliseconds()}.txt`
+  const fileLogName = `output/${pid}-${t.getFullYear()}-${t.getMonth()}-${t.getDate()}-${t.getHours()}-${t.getMinutes()}-${t.getSeconds()}-${t.getMilliseconds()}.txt`
 
   processLogMap.set(pid, fileLogName)
 
