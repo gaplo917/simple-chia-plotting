@@ -1,0 +1,8 @@
+.cache
+.dependency-check
+.scannerwork
+.tmp
+build
+tsconfig.json
+**/node_modules/**
+**/generated/**
