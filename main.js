@@ -9,7 +9,7 @@ const processLogMap = new Map()
 let killed = false
 
 function startMine(config) {
-  const { id, memory, thread, tmp, output, totalPlots } = config
+  const { id, index, memory, thread, tmp, output, totalPlots } = config
   //kick off process of listing files
   const child = spawn('chia', [
     'plots',
@@ -21,9 +21,9 @@ function startMine(config) {
     '-r',
     `${thread}`,
     '-t',
-    `${tmp}`,
+    `${tmp[index % tmp.length]}`,
     '-d',
-    `${output}`
+    `${output[index % output.length]}`
   ])
   const pid = child.pid
   const t = new Date()
@@ -76,6 +76,6 @@ configs.forEach((config, index) => {
   const { totalPlots, concurrent, delay = 0 } = config
   counter.set(index, Number(totalPlots))
   for (let i = 0; i < concurrent; i++) {
-    setTimeout(() => startMine({ id: index, ...config }), delay * 1000 * 60)
+    setTimeout(() => startMine({ id: index, index, ...config }), delay * 1000 * 60)
   }
 })
