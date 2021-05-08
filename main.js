@@ -76,6 +76,6 @@ configs.forEach((config, index) => {
   const { totalPlots, concurrent, delay = 0 } = config
   counter.set(index, Number(totalPlots))
   for (let i = 0; i < concurrent; i++) {
-    setTimeout(() => startMine({ id: index, index, ...config }), delay * 1000 * 60)
+    setTimeout(() => startMine({ id: index + `-${i}`, index: i, ...config }), delay * 1000 * 60)
   }
 })
