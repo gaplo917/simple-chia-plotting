@@ -23,7 +23,8 @@ function startMine(config) {
     '-t',
     `${tmp[index % tmp.length]}`,
     '-d',
-    `${output[index % output.length]}`
+    `${output[index % output.length]}`,
+    '-x'
   ])
   const pid = child.pid
   const t = new Date()
