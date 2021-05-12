@@ -2,15 +2,33 @@ const { spawn } = require('child_process')
 const fs = require('fs')
 const { configs } = require(`./${process.argv[2] || 'config.json'}`)
 
-const startTime = new Date()
-const counter = new Map()
 const processLogMap = new Map()
+const jobCounter = new Map()
 
 let killed = false
 
-function startMine(config) {
-  const { id, index, memory, thread, tmp, output, totalPlots } = config
-  //kick off process of listing files
+function startMine({ jobIndex, concurrentIndex }) {
+  const { configs } = require(`./${process.argv[2] || 'config.json'}`)
+  if (!configs) {
+    process.stdout.write(`${process.argv[2]} or config.json not found`)
+    return
+  }
+  const config = configs[jobIndex]
+  if (!config) {
+    process.stdout.write(`detected number of job changed, cancel job ${jobIndex}`)
+    return
+  }
+  const { memory, thread, tmp, output, concurrency } = configs[jobIndex]
+
+  // otherwise, reduce the jobs
+  if (concurrentIndex >= concurrency) {
+    process.stdout.write(`detected number of concurrency changed, cancel job ${jobIndex}`)
+    return
+  }
+
+  const jobCount = jobCounter.get(jobIndex)
+
+  //kick off process of chia
   const child = spawn('chia', [
     'plots',
     'create',
@@ -21,20 +39,23 @@ function startMine(config) {
     '-r',
     `${thread}`,
     '-t',
-    `${tmp[index % tmp.length]}`,
+    `${tmp[jobCount % tmp.length]}`,
     '-d',
-    `${output[index % output.length]}`,
+    `${output[jobCount % output.length]}`,
     '-x'
   ])
   const pid = child.pid
   const t = new Date()
-  const fileLogName = `output/${t.getFullYear()}-${t.getMonth()}-${t.getDate()}-${t.getHours()}-${t.getMinutes()}-${t.getSeconds()}-${t.getMilliseconds()}-${pid}.txt`
+  const fileLogName = `output/[WIP]${t.getFullYear()}-${
+    t.getMonth() + 1
+  }-${t.getDate()}-${t.getHours()}-${t.getMinutes()}-${t.getSeconds()}-${t.getMilliseconds()}-job${jobIndex}-c${concurrentIndex}-count${jobCount}.txt`
 
+  jobCounter.set(jobIndex, jobCount + 1)
   processLogMap.set(pid, fileLogName)
 
   const writeStream = fs.createWriteStream(fileLogName)
 
-  writeStream.write(JSON.stringify({ id, memory, thread, tmp, output, totalPlots }))
+  writeStream.write(JSON.stringify({ jobIndex, memory, thread, tmp, output }))
   child.stdout.pipe(writeStream)
 
   child.stderr.on('data', function (data) {
@@ -43,20 +64,15 @@ function startMine(config) {
 
   child.on('close', function (code) {
     console.log('Finished with code ' + code)
-    counter.set(id, counter.get(id) - 1)
     if (killed) {
       process.exit(1)
     } else {
       const fileLogName = processLogMap.get(pid)
-      fs.renameSync(fileLogName, fileLogName.replace('output/', 'output/[DONE]'))
-      process.stdout.write(
-        `Plotted ${counter.get(id)}/${totalPlots}, used ${
-          (new Date().getTime() - startTime.getTime()) / 1000 / 60
-        }`
-      )
+      fs.renameSync(fileLogName, fileLogName.replace('output/[WIP]', 'output/[DONE]'))
+
       processLogMap.delete(pid)
 
-      startMine(config)
+      startMine(jobIndex)
     }
   })
 }
@@ -73,10 +89,17 @@ function startMine(config) {
   })
 )
 
-configs.forEach((config, index) => {
-  const { totalPlots, concurrent, delay = 0 } = config
-  counter.set(index, Number(totalPlots))
-  for (let i = 0; i < concurrent; i++) {
-    setTimeout(() => startMine({ id: index + `-${i}`, index: i, ...config }), delay * 1000 * 60)
+configs.forEach((config, jobIndex) => {
+  const { concurrency, delay = 0 } = config
+  jobCounter.set(jobIndex, 0)
+  for (let i = 0; i < concurrency; i++) {
+    setTimeout(
+      () =>
+        startMine({
+          jobIndex,
+          concurrentIndex: i
+        }),
+      delay * 1000 * 60
+    )
   }
 })

@@ -4,8 +4,7 @@
     "thread": 3,
     "tmp": ["/Volumes/SSD1/tmp", "/Volumes/SSD2/tmp"],
     "output": ["/Volumes/HDD1/final", "/Volumes/HDD2/final"],
-    "concurrent": 4,
-    "totalPlots": 30,
+    "concurrency": 4,
     "delay": 60
   }]
 }
