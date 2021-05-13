@@ -72,7 +72,10 @@ function startMine({ jobIndex, concurrentIndex }) {
 
       processLogMap.delete(pid)
 
-      startMine(jobIndex)
+      startMine({
+        jobIndex,
+        concurrentIndex
+      })
     }
   })
 }
