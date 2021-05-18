@@ -6,7 +6,7 @@ function readArgv2OrDefaultConfig(defaultConfig = 'move.json') {
   return require(`./${process.argv[2] || defaultConfig}`)
 }
 
-function getPlotFilenames(dir) {
+function readPlotFilenames(dir) {
   return fs
     .readdirSync(dir, { withFileTypes: true })
     .map(it => it.name)
@@ -18,7 +18,7 @@ const { source, destinations, concurrency, scanInterval } = config
 
 let count = 0
 let killed = false
-let plotFilenames = getPlotFilenames(source)
+let plotFilenames = readPlotFilenames(source)
 const processLogMap = new Map()
 
 log(`Started moving files with concurrency=${concurrency}`, plotFilenames)
@@ -30,12 +30,14 @@ function moveFileJob({ concurrentIndex }) {
 
   if (plotFilenames.length === 0) {
     // mutate the plotFilenames
-    plotFilenames = getPlotFilenames(source)
+    plotFilenames = readPlotFilenames(source)
+
+    log(`[c-${concurrentIndex}] Scanned ${source}, found ${plotFilenames.length} files.`)
 
     if (plotFilenames.length > 0) {
       moveFileJob({ concurrentIndex })
     } else {
-      log(`[c-${concurrentIndex}] Scheduled next scanning after ${scanInterval} minutes`)
+      log(`[c-${concurrentIndex}] Scheduled next job after ${scanInterval} minutes`)
       setTimeout(() => moveFileJob({ concurrentIndex }), scanInterval * 1000 * 60)
     }
     return
