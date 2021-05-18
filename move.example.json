@@ -1,0 +1,14 @@
+{
+  "config": {
+    "source" : "/Volumes/SSD/final/",
+    "destinations": [
+      "/Volumes/HDD1/final",
+      "/Volumes/HDD2/final",
+      "/Volumes/HDD3/final",
+      "/Volumes/HDD4/final",
+      "/Volumes/HDD5/final"
+    ],
+    "concurrency": 1,
+    "scanInterval": 5
+  }
+}

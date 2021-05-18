@@ -64,9 +64,7 @@ function startMine({ jobIndex, concurrentIndex }) {
 
   child.on('close', function (code) {
     console.log('Finished with code ' + code)
-    if (killed) {
-      process.exit(1)
-    } else {
+    if (!killed) {
       const fileLogName = processLogMap.get(pid)
       fs.renameSync(fileLogName, fileLogName.replace('output/[WIP]', 'output/[DONE]'))
 
@@ -76,12 +74,15 @@ function startMine({ jobIndex, concurrentIndex }) {
         jobIndex,
         concurrentIndex
       })
+    } else {
+      console.log('main process already be killed.')
     }
   })
 }
 
 ;['SIGINT', 'SIGTERM', 'SIGQUIT'].forEach(signal =>
   process.on(signal, () => {
+    killed = true
     console.log(`Got ${signal} signal.`)
     new Array(...processLogMap.keys()).forEach(pid => {
       const fileLogName = processLogMap.get(pid)

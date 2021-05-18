@@ -6,6 +6,8 @@ output/*
 !output/.gitkeep
 config*.json
 !config.example.json
+move.json
+!move.example.json
 
 ### macOS template
 # General

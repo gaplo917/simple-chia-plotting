@@ -79,20 +79,27 @@ cd simple-chia-plotting
 ### Change the config
 
 ```
-cp config.example.json config1.json
-vi config1.json
+cp config.example.json config.json
+vi config.json
 
-cp config.example.json config2.json
-vi config2.json
+
+cp move.example.json move.json
+vi move.json
 ```
 
-### Run
+### Run Plot
 
 ```
 node main.js config.json
 
 # Can run more than one node process, just in case
 node main.js config2.json
+```
+
+### Run Move
+
+```
+node move.js move.json
 ```
 
 ### Mechanical Sympathy Reflection on plotting Chia
