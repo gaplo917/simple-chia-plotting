@@ -1,8 +1,10 @@
 const { spawn } = require('child_process')
 const fs = require('fs')
-const { config } = require(`./${process.argv[2] || 'move.json'}`)
+const { log } = require('./utils')
 
-const { source, destinations, concurrency, scanInterval } = config
+function readArgv2OrDefaultConfig(defaultConfig = 'move.json') {
+  return require(`./${process.argv[2] || defaultConfig}`)
+}
 
 function getPlotFilenames(dir) {
   return fs
@@ -11,12 +13,15 @@ function getPlotFilenames(dir) {
     .filter(it => it.endsWith('.plot'))
 }
 
+const { config } = readArgv2OrDefaultConfig()
+const { source, destinations, concurrency, scanInterval } = config
+
 let count = 0
 let killed = false
 let plotFilenames = getPlotFilenames(source)
 const processLogMap = new Map()
 
-console.log(`Started moving files with concurrency=${concurrency}`, plotFilenames)
+log(`Started moving files with concurrency=${concurrency}`, plotFilenames)
 
 function moveFileJob() {
   if (killed) {
@@ -32,7 +37,7 @@ function moveFileJob() {
     if (plotFilenames.length > 0) {
       moveFileJob()
     } else {
-      console.log(`[c-${concurrentIndex}] Scheduled next scanning after ${scanInterval} minutes`)
+      log(`[c-${concurrentIndex}] Scheduled next scanning after ${scanInterval} minutes`)
       setTimeout(() => moveFileJob(), scanInterval * 1000 * 60)
     }
     return
@@ -41,39 +46,39 @@ function moveFileJob() {
   const dest = destinations[count % destinations.length]
   const filename = plotFilenames.pop()
   if (!fs.existsSync(dest)) {
-    console.log(`${dest} not exist, create it.`)
+    log(`${dest} not exist, create it.`)
     fs.mkdirSync(dest, { recursive: true })
   }
   const sourceFilePath = (source + '/').replace('//', '/') + filename
   const destFilePath = (dest + '/').replace('//', '/') + filename
 
   if (!fs.existsSync(sourceFilePath)) {
-    console.log(`${sourceFilePath} not exist`)
+    log(`${sourceFilePath} not exist`)
     moveFileJob()
     return
   }
 
   const start = new Date().getTime()
 
-  console.log(`[c-${concurrentIndex}] move ${sourceFilePath} to ${destFilePath}`)
+  log(`[c-${concurrentIndex}] move ${sourceFilePath} to ${destFilePath}`)
 
   const child = spawn('mv', [sourceFilePath, destFilePath])
   const pid = child.pid
   processLogMap.set(pid, sourceFilePath)
   count++
 
-  child.on('close', function (code) {
+  child.on('close', function () {
     processLogMap.delete(pid)
     if (!killed) {
       const end = new Date().getTime()
       const diffInSec = (end - start) / 1000
-      console.log(
+      log(
         `[c-${concurrentIndex}] Done. Move ${sourceFilePath} to ${destFilePath} takes ${diffInSec}seconds`
       )
       // start next job
       moveFileJob()
     } else {
-      console.log('main process already be killed.')
+      log('main process already be killed.')
     }
   })
 }
@@ -81,7 +86,7 @@ function moveFileJob() {
 ;['SIGINT', 'SIGTERM', 'SIGQUIT'].forEach(signal =>
   process.on(signal, () => {
     killed = true
-    console.log(`Got ${signal} signal.`)
+    log(`Got ${signal} signal.`)
     new Array(...processLogMap.keys()).forEach(pid => {
       process.kill(pid, 'SIGKILL')
     })

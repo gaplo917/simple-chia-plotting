@@ -1,6 +1,12 @@
 const { spawn } = require('child_process')
 const fs = require('fs')
-const { configs } = require(`./${process.argv[2] || 'config.json'}`)
+const { log } = require('./utils')
+
+function readArgv2OrDefaultConfig(defaultConfig = 'config.json') {
+  return require(`./${process.argv[2] || defaultConfig}`)
+}
+
+const { configs } = readArgv2OrDefaultConfig()
 
 const processLogMap = new Map()
 const jobCounter = new Map()
@@ -8,21 +14,24 @@ const jobCounter = new Map()
 let killed = false
 
 function startMine({ jobIndex, concurrentIndex }) {
-  const { configs } = require(`./${process.argv[2] || 'config.json'}`)
+  if (killed) {
+    return
+  }
+  const { configs } = readArgv2OrDefaultConfig()
   if (!configs) {
-    process.stdout.write(`${process.argv[2]} or config.json not found`)
+    log(`${process.argv[2]} or config.json not found`)
     return
   }
   const config = configs[jobIndex]
   if (!config) {
-    process.stdout.write(`detected number of job changed, cancel job ${jobIndex}`)
+    log(`detected number of job changed, cancel job ${jobIndex}`)
     return
   }
   const { memory, thread, tmp, output, concurrency } = configs[jobIndex]
 
   // otherwise, reduce the jobs
   if (concurrentIndex >= concurrency) {
-    process.stdout.write(`detected number of concurrency changed, cancel job ${jobIndex}`)
+    log(`detected number of concurrency changed, cancel job ${jobIndex}`)
     return
   }
 
@@ -59,11 +68,11 @@ function startMine({ jobIndex, concurrentIndex }) {
   child.stdout.pipe(writeStream)
 
   child.stderr.on('data', function (data) {
-    process.stdout.write(data.toString())
+    log(data.toString())
   })
 
-  child.on('close', function (code) {
-    console.log('Finished with code ' + code)
+  child.on('close', function () {
+    processLogMap.delete(pid)
     if (!killed) {
       const fileLogName = processLogMap.get(pid)
       fs.renameSync(fileLogName, fileLogName.replace('output/[WIP]', 'output/[DONE]'))
@@ -75,7 +84,7 @@ function startMine({ jobIndex, concurrentIndex }) {
         concurrentIndex
       })
     } else {
-      console.log('main process already be killed.')
+      log('main process already be killed.')
     }
   })
 }
@@ -83,7 +92,7 @@ function startMine({ jobIndex, concurrentIndex }) {
 ;['SIGINT', 'SIGTERM', 'SIGQUIT'].forEach(signal =>
   process.on(signal, () => {
     killed = true
-    console.log(`Got ${signal} signal.`)
+    log(`Got ${signal} signal.`)
     new Array(...processLogMap.keys()).forEach(pid => {
       const fileLogName = processLogMap.get(pid)
       fs.renameSync(fileLogName, fileLogName.replace('output/', 'output/[KILLED]'))
