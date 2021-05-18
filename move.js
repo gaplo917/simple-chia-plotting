@@ -23,22 +23,20 @@ const processLogMap = new Map()
 
 log(`Started moving files with concurrency=${concurrency}`, plotFilenames)
 
-function moveFileJob() {
+function moveFileJob({ concurrentIndex }) {
   if (killed) {
     return
   }
-
-  const concurrentIndex = count % concurrency
 
   if (plotFilenames.length === 0) {
     // mutate the plotFilenames
     plotFilenames = getPlotFilenames(source)
 
     if (plotFilenames.length > 0) {
-      moveFileJob()
+      moveFileJob({ concurrentIndex })
     } else {
       log(`[c-${concurrentIndex}] Scheduled next scanning after ${scanInterval} minutes`)
-      setTimeout(() => moveFileJob(), scanInterval * 1000 * 60)
+      setTimeout(() => moveFileJob({ concurrentIndex }), scanInterval * 1000 * 60)
     }
     return
   }
@@ -54,7 +52,7 @@ function moveFileJob() {
 
   if (!fs.existsSync(sourceFilePath)) {
     log(`${sourceFilePath} not exist`)
-    moveFileJob()
+    moveFileJob({ concurrentIndex })
     return
   }
 
@@ -76,7 +74,7 @@ function moveFileJob() {
         `[c-${concurrentIndex}] Done. Move ${sourceFilePath} to ${destFilePath} takes ${diffInSec}seconds`
       )
       // start next job
-      moveFileJob()
+      moveFileJob({ concurrentIndex })
     } else {
       log('main process already be killed.')
     }
@@ -95,5 +93,5 @@ function moveFileJob() {
 )
 
 for (let i = 0; i < concurrency; i++) {
-  moveFileJob()
+  moveFileJob({ concurrentIndex: i })
 }
