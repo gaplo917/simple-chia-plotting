@@ -32,7 +32,7 @@ function moveFileJob() {
     if (plotFilenames.length > 0) {
       moveFileJob()
     } else {
-      console.log(`Scheduled next scanning after ${scanInterval} minutes`)
+      console.log(`[c-${concurrentIndex}] Scheduled next scanning after ${scanInterval} minutes`)
       setTimeout(() => moveFileJob(), scanInterval * 1000 * 60)
     }
     return
