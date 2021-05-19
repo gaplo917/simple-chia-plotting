@@ -72,7 +72,6 @@ function startMine({ jobIndex, concurrentIndex }) {
   })
 
   child.on('close', function () {
-    processLogMap.delete(pid)
     if (!killed) {
       const fileLogName = processLogMap.get(pid)
       fs.renameSync(fileLogName, fileLogName.replace('output/[WIP]', 'output/[DONE]'))
