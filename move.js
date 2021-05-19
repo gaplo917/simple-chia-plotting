@@ -19,6 +19,7 @@ const { source, destinations, concurrency, scanInterval } = config
 let count = 0
 let killed = false
 let plotFilenames = readPlotFilenames(source)
+const plotMoving = new Map()
 const processLogMap = new Map()
 
 log(`Started moving files with concurrency=${concurrency}`, plotFilenames)
@@ -27,24 +28,22 @@ function moveFileJob({ concurrentIndex }) {
   if (killed) {
     return
   }
+  // mutate the plotFilenames
+  plotFilenames = readPlotFilenames(source)
 
-  if (plotFilenames.length === 0) {
-    // mutate the plotFilenames
-    plotFilenames = readPlotFilenames(source)
+  const newFileCount = plotFilenames.length - plotMoving.size
 
-    log(`[c-${concurrentIndex}] Scanned ${source}, found ${plotFilenames.length} files.`)
+  log(`[c-${concurrentIndex}] Scanned ${source}, found ${newFileCount} new files.`)
 
-    if (plotFilenames.length > 0) {
-      moveFileJob({ concurrentIndex })
-    } else {
-      log(`[c-${concurrentIndex}] Scheduled next job after ${scanInterval} minutes`)
-      setTimeout(() => moveFileJob({ concurrentIndex }), scanInterval * 1000 * 60)
-    }
+  if (newFileCount === 0) {
+    log(`[c-${concurrentIndex}] Scheduled next job after ${scanInterval} minutes`)
+    setTimeout(() => moveFileJob({ concurrentIndex }), scanInterval * 1000 * 60)
     return
   }
 
   const dest = destinations[count % destinations.length]
-  const filename = plotFilenames.pop()
+  const filename = plotFilenames.find(it => !plotMoving.has(it))
+  plotMoving.set(filename, true)
   if (!fs.existsSync(dest)) {
     log(`${dest} not exist, create it.`)
     fs.mkdirSync(dest, { recursive: true })
@@ -69,6 +68,7 @@ function moveFileJob({ concurrentIndex }) {
 
   child.on('close', function () {
     processLogMap.delete(pid)
+    plotMoving.delete(filename)
     if (!killed) {
       const end = new Date().getTime()
       const diffInSec = (end - start) / 1000
