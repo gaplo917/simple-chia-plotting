@@ -35,7 +35,7 @@ function moveFileJob({ concurrentIndex }) {
 
   log(`[c-${concurrentIndex}] Scanned ${source}, found ${newFileCount} new files.`)
 
-  if (newFileCount === 0) {
+  if (newFileCount <= 0) {
     log(`[c-${concurrentIndex}] Scheduled next job after ${scanInterval} minutes`)
     setTimeout(() => moveFileJob({ concurrentIndex }), scanInterval * 1000 * 60)
     return
