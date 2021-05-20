@@ -5,9 +5,10 @@ node_modules
 output/*
 !output/.gitkeep
 config*.json
-!config.example.json
+!*.example.json
 move.json
-!move.example.json
+deduplicate.json
+
 
 ### macOS template
 # General
