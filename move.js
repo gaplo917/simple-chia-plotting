@@ -34,7 +34,7 @@ function moveFileJob({ concurrentIndex }) {
   const newFileCount = plotFilenames.length - plotMoving.size
 
   log(
-    `[c-${concurrentIndex}] Scanned ${source}, found ${newFileCount} new files and moving ${plotMoving} files`
+    `[c-${concurrentIndex}] Scanned ${source}, found ${newFileCount} new files and moving ${plotMoving.size} files`
   )
 
   if (newFileCount <= 0) {
