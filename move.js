@@ -18,7 +18,6 @@ const { source, destinations, scanInterval } = config
 
 let count = 0
 let killed = false
-const plotOnQueue = []
 const processLogMap = new Map()
 const isDiskUsingArray = new Array(destinations.length).fill(false)
 const diskQueues = new Array(destinations.length).fill(null).map(_ => [])
@@ -94,6 +93,8 @@ function scheuldeCheck() {
   // mutate the plotFilenames
   const plotFilenames = readPlotFilenames(source)
 
+  const plotOnQueue = diskQueues.reduce((acc, e) => acc.concat(e), [])
+
   const newFileCount = plotFilenames.length - plotOnQueue.length
 
   log(
@@ -104,7 +105,6 @@ function scheuldeCheck() {
     plotFilenames
       .filter(it => !plotOnQueue.includes(it))
       .forEach(filename => {
-        plotOnQueue.push(filename)
         diskQueues[count % destinations.length].push(filename)
         count++
       })
