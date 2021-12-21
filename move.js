@@ -32,9 +32,10 @@ function moveFileJob({ concurrentIndex }) {
   plotFilenames = readPlotFilenames(source)
 
   const newFileCount = plotFilenames.length - plotMoving.size
+  const dest = destinations[concurrentIndex]
 
   log(
-    `[c-${concurrentIndex}] Scanned ${source}, found ${newFileCount} new files and moving ${plotMoving.size} files`
+    `[c-${concurrentIndex}] Scanned ${source} for ${dest}, found ${newFileCount} new files and moving ${plotMoving.size} files`
   )
 
   if (newFileCount <= 0) {
@@ -43,7 +44,6 @@ function moveFileJob({ concurrentIndex }) {
     return
   }
 
-  const dest = destinations[concurrentIndex]
   const filename = plotFilenames.find(it => !plotMoving.has(it))
   plotMoving.set(filename, true)
   if (!fs.existsSync(dest)) {
