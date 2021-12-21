@@ -18,67 +18,58 @@ const { source, destinations, scanInterval } = config
 
 let count = 0
 let killed = false
-let plotFilenames = readPlotFilenames(source)
-const plotMoving = new Map()
+const plotOnQueue = []
 const processLogMap = new Map()
+const isDiskUsingArray = new Array(destinations.length).fill(false)
+const diskQueues = new Array(destinations.length).fill(null).map(_ => [])
 
-log(`Started moving files with concurrency=${destinations.length}`, plotFilenames)
+function moveFileJob({ diskIndex }) {
+  log(`[c-${diskIndex}] job is running`)
 
-function moveFileJob({ concurrentIndex }) {
-  if (killed) {
+  if (killed || isDiskUsingArray[diskIndex] || diskQueues[diskIndex].length === 0) {
+    log(`[c-${diskIndex}] disk is busy or no file in queue`, {
+      isDiskUsing: isDiskUsingArray[diskIndex],
+      diskQueue: diskQueues[diskIndex]
+    })
+    // disk is busy or no filename found, check again later
     return
   }
-  // mutate the plotFilenames
-  plotFilenames = readPlotFilenames(source)
+  const filename = diskQueues[diskIndex].pop()
+  const sourceFilePath = (source + '/').replace('//', '/') + filename
 
-  const newFileCount = plotFilenames.length - plotMoving.size
-  const dest = destinations[concurrentIndex]
-
-  log(
-    `[c-${concurrentIndex}] Scanned ${source} for ${dest}, found ${newFileCount} new files and moving ${plotMoving.size} files`
-  )
-
-  if (newFileCount <= 0) {
-    log(`[c-${concurrentIndex}] Scheduled next job after ${scanInterval} minutes`)
-    setTimeout(() => moveFileJob({ concurrentIndex }), scanInterval * 1000 * 60)
+  if (!fs.existsSync(sourceFilePath)) {
+    log(`${sourceFilePath} not exist`)
+    moveFileJob({ diskIndex })
     return
   }
 
-  const filename = plotFilenames.find(it => !plotMoving.has(it))
-  plotMoving.set(filename, true)
+  const dest = destinations[diskIndex]
   if (!fs.existsSync(dest)) {
     log(`${dest} not exist, create it.`)
     fs.mkdirSync(dest, { recursive: true })
   }
-  const sourceFilePath = (source + '/').replace('//', '/') + filename
   const destFilePath = (dest + '/').replace('//', '/') + filename
-
-  if (!fs.existsSync(sourceFilePath)) {
-    log(`${sourceFilePath} not exist`)
-    moveFileJob({ concurrentIndex })
-    return
-  }
 
   const start = new Date().getTime()
 
-  log(`[c-${concurrentIndex}] move ${sourceFilePath} to ${destFilePath}`)
+  log(`[c-${diskIndex}] move ${sourceFilePath} to ${destFilePath}`)
 
   const child = spawn('mv', [sourceFilePath, destFilePath])
   const pid = child.pid
   processLogMap.set(pid, sourceFilePath)
-  count++
+  isDiskUsingArray[diskIndex] = true
 
   child.on('close', function () {
     processLogMap.delete(pid)
-    plotMoving.delete(filename)
+    isDiskUsingArray[diskIndex] = false
     if (!killed) {
       const end = new Date().getTime()
       const diffInSec = (end - start) / 1000
       log(
-        `[c-${concurrentIndex}] Done. Move ${sourceFilePath} to ${destFilePath} takes ${diffInSec}seconds`
+        `[c-${diskIndex}] Done. Move ${sourceFilePath} to ${destFilePath} takes ${diffInSec}seconds`
       )
       // start next job
-      moveFileJob({ concurrentIndex })
+      moveFileJob({ diskIndex })
     } else {
       log('main process already be killed.')
     }
@@ -96,6 +87,36 @@ function moveFileJob({ concurrentIndex }) {
   })
 )
 
-for (let i = 0; i < destinations.length; i++) {
-  moveFileJob({ concurrentIndex: i })
+function scheuldeCheck() {
+  if (killed) {
+    return
+  }
+  // mutate the plotFilenames
+  const plotFilenames = readPlotFilenames(source)
+
+  const newFileCount = plotFilenames.length - plotOnQueue.length
+
+  log(
+    `Scanned ${source} , found ${newFileCount} new files and queued ${plotOnQueue.length} files to work`
+  )
+
+  if (newFileCount > 0) {
+    plotFilenames
+      .filter(it => !plotOnQueue.includes(it))
+      .forEach(filename => {
+        plotOnQueue.push(filename)
+        diskQueues[count % destinations.length].push(filename)
+        count++
+      })
+    log(`Added ${newFileCount} new files to queue`)
+    for (let i = 0; i < destinations.length; i++) {
+      moveFileJob({ diskIndex: i })
+    }
+  }
 }
+
+scheuldeCheck()
+
+setInterval(() => {
+  scheuldeCheck()
+}, scanInterval * 1000 * 60)

@@ -1,6 +1,7 @@
-const { spawn } = require('child_process')
+const { spawn, execSync } = require('child_process')
 const fs = require('fs')
 const { log } = require('./utils')
+const path = require('path')
 
 function readArgv2OrDefaultConfig(defaultConfig = 'config.json') {
   return require(`./${process.argv[2] || defaultConfig}`)
@@ -17,8 +18,16 @@ let jobCounter = 0
 
 let killed = false
 
+if (!fs.existsSync(memoryTmp)) {
+  log(`${memoryTmp} not exist, create it.`)
+  fs.mkdirSync(memoryTmp, { recursive: true })
+}
+
+fs.writeFileSync(path.join(memoryTmp, 'dirty'), 'mark dirty')
+
 // clear the memory tmp first
-spawn('rm', [`./${memoryTmp}/*`])
+log(`cleaning up ${memoryTmp}`)
+execSync(`rm ${memoryTmp}/*`)
 
 function startPlot() {
   if (killed) {
@@ -38,7 +47,7 @@ function startPlot() {
     '-2',
     `${memoryTmp}`,
     '-d',
-    `${output[jobCounter % output.length]}`
+    `${output}`
   ])
   const pid = child.pid
   const t = new Date()
@@ -49,11 +58,9 @@ function startPlot() {
   jobCounter++
   processLogMap.set(pid, fileLogName)
 
-  const writeStream = fs.createWriteStream(fileLogName)
-
-  writeStream.write(JSON.stringify(config))
-  child.stdout.pipe(writeStream)
-  child.stdout.pipe(process.stdout)
+  child.stdout.on('data', function (data) {
+    log(data.toString())
+  })
   child.stderr.on('data', function (data) {
     log(data.toString())
   })
