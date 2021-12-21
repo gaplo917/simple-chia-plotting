@@ -53,7 +53,7 @@ function moveFileJob({ diskIndex }) {
 
   log(`[c-${diskIndex}] move ${sourceFilePath} to ${destFilePath}`)
 
-  const child = spawn('mv', [sourceFilePath, destFilePath])
+  const child = spawn('mv', ['-f', sourceFilePath, destFilePath])
   const pid = child.pid
   processLogMap.set(pid, sourceFilePath)
   isDiskUsingArray[diskIndex] = true
