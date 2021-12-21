@@ -1,10 +1,7 @@
 {
-  "configs": [{
-    "memory": 4500,
-    "thread": 3,
-    "tmp": ["/Volumes/SSD1/tmp", "/Volumes/SSD2/tmp"],
-    "output": ["/Volumes/HDD1/final", "/Volumes/HDD2/final"],
-    "concurrency": 4,
-    "delay": 60
-  }]
+  "thread": 8,
+  "tmp": "/Volumes/SSD/tmp",
+  "memoryTmp": "/Volumes/RAMDISK/tmp",
+  "output": "/Volumes/SSD/final",
+  "count": 73
 }

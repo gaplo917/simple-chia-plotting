@@ -6,67 +6,54 @@ function readArgv2OrDefaultConfig(defaultConfig = 'config.json') {
   return require(`./${process.argv[2] || defaultConfig}`)
 }
 
-const { configs } = readArgv2OrDefaultConfig()
-
+const config = readArgv2OrDefaultConfig()
+if (!config) {
+  log(`detected no config.json, aborted`)
+  return
+}
+const { thread, tmp, memoryTmp, output, count } = config
 const processLogMap = new Map()
-const jobCounter = new Map()
+let jobCounter = 0
 
 let killed = false
 
-function startMine({ jobIndex, concurrentIndex }) {
+// clear the memory tmp first
+spawn('rm', [`./${memoryTmp}/*`])
+
+function startPlot() {
   if (killed) {
     return
   }
-  const { configs } = readArgv2OrDefaultConfig()
-  if (!configs) {
-    log(`${process.argv[2]} or config.json not found`)
-    return
-  }
-  const config = configs[jobIndex]
-  if (!config) {
-    log(`detected number of job changed, cancel job ${jobIndex}`)
-    return
-  }
-  const { memory, thread, tmp, output, concurrency } = configs[jobIndex]
-
-  // otherwise, reduce the jobs
-  if (concurrentIndex >= concurrency) {
-    log(`detected number of concurrency changed, cancel job ${jobIndex}`)
-    return
-  }
-
-  const jobCount = jobCounter.get(jobIndex)
 
   //kick off process of chia
   const child = spawn('chia', [
-    'plots',
-    'create',
+    'plotters',
+    'madmax',
     '-k',
     '32',
-    '-b',
-    `${memory}`,
     '-r',
     `${thread}`,
     '-t',
-    `${tmp[jobCount % tmp.length]}`,
+    `${tmp}`,
+    '-2',
+    `${memoryTmp}`,
     '-d',
-    `${output[jobCount % output.length]}`,
-    '-x'
+    `${output[jobCounter % output.length]}`
   ])
   const pid = child.pid
   const t = new Date()
   const fileLogName = `output/[WIP]${t.getFullYear()}-${
     t.getMonth() + 1
-  }-${t.getDate()}-${t.getHours()}-${t.getMinutes()}-${t.getSeconds()}-${t.getMilliseconds()}-job${jobIndex}-c${concurrentIndex}-count${jobCount}.txt`
+  }-${t.getDate()}-${t.getHours()}-${t.getMinutes()}-${t.getSeconds()}-${t.getMilliseconds()}-count${jobCounter}.txt`
 
-  jobCounter.set(jobIndex, jobCount + 1)
+  jobCounter++
   processLogMap.set(pid, fileLogName)
 
   const writeStream = fs.createWriteStream(fileLogName)
 
-  writeStream.write(JSON.stringify({ jobIndex, memory, thread, tmp, output }))
+  writeStream.write(JSON.stringify(config))
   child.stdout.pipe(writeStream)
-
+  child.stdout.pipe(process.stdout)
   child.stderr.on('data', function (data) {
     log(data.toString())
   })
@@ -78,10 +65,9 @@ function startMine({ jobIndex, concurrentIndex }) {
 
       processLogMap.delete(pid)
 
-      startMine({
-        jobIndex,
-        concurrentIndex
-      })
+      if (jobCounter < count) {
+        startPlot()
+      }
     } else {
       log('main process already be killed.')
     }
@@ -101,17 +87,4 @@ function startMine({ jobIndex, concurrentIndex }) {
   })
 )
 
-configs.forEach((config, jobIndex) => {
-  const { concurrency, delay = 0 } = config
-  jobCounter.set(jobIndex, 0)
-  for (let i = 0; i < concurrency; i++) {
-    setTimeout(
-      () =>
-        startMine({
-          jobIndex,
-          concurrentIndex: i
-        }),
-      delay * 1000 * 60
-    )
-  }
-})
+startPlot()
