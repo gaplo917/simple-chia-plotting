@@ -14,7 +14,7 @@ function readPlotFilenames(dir) {
 }
 
 const { config } = readArgv2OrDefaultConfig()
-const { source, destinations, concurrency, scanInterval } = config
+const { source, destinations, scanInterval } = config
 
 let count = 0
 let killed = false
@@ -22,7 +22,7 @@ let plotFilenames = readPlotFilenames(source)
 const plotMoving = new Map()
 const processLogMap = new Map()
 
-log(`Started moving files with concurrency=${concurrency}`, plotFilenames)
+log(`Started moving files with concurrency=${destinations.length}`, plotFilenames)
 
 function moveFileJob({ concurrentIndex }) {
   if (killed) {
@@ -43,7 +43,7 @@ function moveFileJob({ concurrentIndex }) {
     return
   }
 
-  const dest = destinations[count % destinations.length]
+  const dest = destinations[concurrentIndex]
   const filename = plotFilenames.find(it => !plotMoving.has(it))
   plotMoving.set(filename, true)
   if (!fs.existsSync(dest)) {
@@ -96,6 +96,6 @@ function moveFileJob({ concurrentIndex }) {
   })
 )
 
-for (let i = 0; i < concurrency; i++) {
+for (let i = 0; i < destinations.length; i++) {
   moveFileJob({ concurrentIndex: i })
 }
