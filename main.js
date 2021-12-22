@@ -35,6 +35,8 @@ function startPlot() {
   }
 
   //kick off process of chia
+  log('current jobCount:', jobCounter)
+
   const child = spawn('chia', [
     'plotters',
     'madmax',
