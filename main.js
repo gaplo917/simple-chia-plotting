@@ -50,13 +50,9 @@ function startPlot() {
     `${output}`
   ])
   const pid = child.pid
-  const t = new Date()
-  const fileLogName = `output/[WIP]${t.getFullYear()}-${
-    t.getMonth() + 1
-  }-${t.getDate()}-${t.getHours()}-${t.getMinutes()}-${t.getSeconds()}-${t.getMilliseconds()}-count${jobCounter}.txt`
 
   jobCounter++
-  processLogMap.set(pid, fileLogName)
+  processLogMap.set(pid, true)
 
   child.stdout.on('data', function (data) {
     log(data.toString())
@@ -67,9 +63,6 @@ function startPlot() {
 
   child.on('close', function () {
     if (!killed) {
-      const fileLogName = processLogMap.get(pid)
-      fs.renameSync(fileLogName, fileLogName.replace('output/[WIP]', 'output/[DONE]'))
-
       processLogMap.delete(pid)
 
       if (jobCounter < count) {
